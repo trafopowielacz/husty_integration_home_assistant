@@ -1,5 +1,6 @@
 from homeassistant.components.sensor import SensorEntity
 from homeassistant.helpers.entity import DeviceInfo
+from homeassistant.util import dt as dt_util
 
 from .const import DOMAIN
 
@@ -16,6 +17,7 @@ SENSORS = {
         "icon": "mdi:shaker",
     },
 
+
     "water_remaining": {
         "name": "Pozostała woda",
         "path": [
@@ -25,6 +27,7 @@ SENSORS = {
         "unit": "L",
         "icon": "mdi:water",
     },
+
 
     "water_remaining_percent": {
         "name": "Pozostała woda procent",
@@ -36,6 +39,7 @@ SENSORS = {
         "icon": "mdi:water-percent",
     },
 
+
     "water_flow": {
         "name": "Przepływ wody",
         "path": [
@@ -44,7 +48,9 @@ SENSORS = {
         ],
         "unit": "L/min",
         "icon": "mdi:water-pump",
+        "flow": True,
     },
+
 
     "water_today": {
         "name": "Zużycie wody dzisiaj",
@@ -59,6 +65,7 @@ SENSORS = {
         "total": True,
     },
 
+
     "water_month": {
         "name": "Zużycie wody miesiąc",
         "path": [
@@ -71,6 +78,7 @@ SENSORS = {
         "icon": "mdi:calendar-month",
         "total": True,
     },
+
 
     "water_total": {
         "name": "Zużycie wody całkowite",
@@ -85,6 +93,7 @@ SENSORS = {
         "total": True,
     },
 
+
     "regeneration_days": {
         "name": "Regeneracja za",
         "path": [
@@ -95,6 +104,7 @@ SENSORS = {
         "icon": "mdi:calendar-refresh",
     },
 
+
     "salt_regenerations": {
         "name": "Pozostałe regeneracje z soli",
         "path": [
@@ -103,6 +113,17 @@ SENSORS = {
         ],
         "unit": None,
         "icon": "mdi:shaker-outline",
+    },
+
+
+    "last_connection": {
+        "name": "Ostatnie połączenie",
+        "path": [
+            "metadata",
+            "lastReportedAt"
+        ],
+        "unit": None,
+        "icon": "mdi:lan-connect",
     },
 
 }
@@ -125,6 +146,7 @@ async def async_setup_entry(
                 key,
                 data
             )
+
             for key, data in SENSORS.items()
         ]
     )
@@ -142,6 +164,8 @@ class HustySensor(SensorEntity):
 
         self.coordinator = coordinator
 
+        self.path = data["path"]
+
         self._attr_unique_id = (
             f"husty_{key}"
         )
@@ -154,11 +178,10 @@ class HustySensor(SensorEntity):
             data["icon"]
         )
 
-        self.path = data["path"]
-
         self._attr_native_unit_of_measurement = (
             data["unit"]
         )
+
 
         if data.get("total"):
 
@@ -171,6 +194,14 @@ class HustySensor(SensorEntity):
             )
 
 
+        if data.get("flow"):
+
+            self._attr_device_class = (
+                "volume_flow_rate"
+            )
+
+
+
     @property
     def device_info(self):
 
@@ -180,6 +211,7 @@ class HustySensor(SensorEntity):
             ["data"]
             ["json"]
         )
+
 
         return DeviceInfo(
 
@@ -201,6 +233,7 @@ class HustySensor(SensorEntity):
         )
 
 
+
     @property
     def native_value(self):
 
@@ -211,7 +244,15 @@ class HustySensor(SensorEntity):
             ["json"]
         )
 
+
         for item in self.path:
+
             data = data[item]
+
+
+        if self.path[-1] == "lastReportedAt":
+
+            return dt_util.parse_datetime(data)
+
 
         return data
