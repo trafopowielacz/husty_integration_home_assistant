@@ -49,6 +49,10 @@ class HustyCoordinator(DataUpdateCoordinator):
     async def login(self):
         """Login to Husty."""
 
+        _LOGGER.debug(
+            "Logging into Husty API"
+        )
+
         response = await self.session.post(
             LOGIN_URL,
             json={
@@ -59,15 +63,21 @@ class HustyCoordinator(DataUpdateCoordinator):
 
         response.raise_for_status()
 
-        self.cookies = response.cookies
+
+        self.cookies = {
+            key: morsel.value
+            for key, morsel in response.cookies.items()
+        }
+
 
         _LOGGER.info(
             "Husty login successful"
         )
 
 
+
     async def _async_update_data(self):
-        """Fetch data from Husty."""
+        """Fetch data from Husty API."""
 
         if not self.cookies:
             await self.login()
@@ -83,6 +93,7 @@ class HustyCoordinator(DataUpdateCoordinator):
                                 self.device_id
                         }
                     },
+
                     "1": {
                         "json": {
                             "deviceId":
@@ -94,14 +105,55 @@ class HustyCoordinator(DataUpdateCoordinator):
         }
 
 
-        response = await self.session.get(
-            DEVICE_URL,
-            params=query,
-            cookies=self.cookies,
-        )
+        try:
+
+            response = await self.session.get(
+                DEVICE_URL,
+                params=query,
+                cookies=self.cookies,
+            )
 
 
-        response.raise_for_status()
+            # sesja wygasła
+            if response.status in (401, 403):
+
+                _LOGGER.warning(
+                    "Husty session expired, relogin"
+                )
 
 
-        return await response.json()
+                await self.login()
+
+
+                response = await self.session.get(
+                    DEVICE_URL,
+                    params=query,
+                    cookies=self.cookies,
+                )
+
+
+            response.raise_for_status()
+
+
+            return await response.json()
+
+
+
+        except aiohttp.ClientError as err:
+
+            _LOGGER.error(
+                "Husty API error: %s",
+                err
+            )
+
+            raise
+
+
+
+    async def async_shutdown(self):
+
+        """Close HTTP session."""
+
+        if self.session:
+
+            await self.session.close()
