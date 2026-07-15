@@ -5,30 +5,43 @@ from .const import DOMAIN
 
 
 SENSORS = {
+
     "salt_level": {
         "name": "Sól",
-        "path": ["core", "saltLevel1"],
+        "path": [
+            "core",
+            "saltLevel1"
+        ],
         "unit": "kg",
         "icon": "mdi:shaker",
     },
 
     "water_remaining": {
         "name": "Pozostała woda",
-        "path": ["core", "waterSupply"],
+        "path": [
+            "core",
+            "waterSupply"
+        ],
         "unit": "L",
         "icon": "mdi:water",
     },
 
     "water_remaining_percent": {
         "name": "Pozostała woda procent",
-        "path": ["core", "waterSupplyPercent"],
+        "path": [
+            "core",
+            "waterSupplyPercent"
+        ],
         "unit": "%",
         "icon": "mdi:water-percent",
     },
 
     "water_flow": {
         "name": "Przepływ wody",
-        "path": ["core", "waterFlow"],
+        "path": [
+            "core",
+            "waterFlow"
+        ],
         "unit": "L/min",
         "icon": "mdi:water-pump",
     },
@@ -59,6 +72,19 @@ SENSORS = {
         "total": True,
     },
 
+    "water_total": {
+        "name": "Zużycie wody całkowite",
+        "path": [
+            "core",
+            "consumption",
+            "year",
+            "total"
+        ],
+        "unit": "L",
+        "icon": "mdi:water-sync",
+        "total": True,
+    },
+
     "regeneration_days": {
         "name": "Regeneracja za",
         "path": [
@@ -78,7 +104,9 @@ SENSORS = {
         "unit": None,
         "icon": "mdi:shaker-outline",
     },
+
 }
+
 
 
 async def async_setup_entry(
@@ -89,16 +117,18 @@ async def async_setup_entry(
 
     coordinator = hass.data[DOMAIN][entry.entry_id]
 
+
     async_add_entities(
         [
             HustySensor(
                 coordinator,
                 key,
-                data,
+                data
             )
             for key, data in SENSORS.items()
         ]
     )
+
 
 
 class HustySensor(SensorEntity):
@@ -107,7 +137,7 @@ class HustySensor(SensorEntity):
         self,
         coordinator,
         key,
-        data,
+        data
     ):
 
         self.coordinator = coordinator
@@ -120,7 +150,9 @@ class HustySensor(SensorEntity):
             f"Husty {data['name']}"
         )
 
-        self._attr_icon = data["icon"]
+        self._attr_icon = (
+            data["icon"]
+        )
 
         self.path = data["path"]
 
@@ -129,6 +161,7 @@ class HustySensor(SensorEntity):
         )
 
         if data.get("total"):
+
             self._attr_state_class = (
                 "total_increasing"
             )
@@ -149,6 +182,7 @@ class HustySensor(SensorEntity):
         )
 
         return DeviceInfo(
+
             identifiers={
                 (
                     DOMAIN,
@@ -163,6 +197,7 @@ class HustySensor(SensorEntity):
             model=data["core"]["model"],
 
             sw_version=data["core"]["version"],
+
         )
 
 
