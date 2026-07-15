@@ -1,37 +1,12 @@
-from homeassistant.components.binary_sensor import BinarySensorEntity
-from homeassistant.helpers.entity import DeviceInfo
+from homeassistant.components.binary_sensor import (
+    BinarySensorEntity,
+)
+
+from homeassistant.helpers.update_coordinator import (
+    CoordinatorEntity,
+)
 
 from .const import DOMAIN
-
-
-BINARY_SENSORS = {
-
-    "online": {
-        "name": "Online",
-        "path": [
-            "metadata",
-            "connectionState"
-        ],
-    },
-
-    "regeneration": {
-        "name": "Regeneracja aktywna",
-        "path": [
-            "core",
-            "regenerationInProgress"
-        ],
-    },
-
-    "shutoff_valve": {
-        "name": "Zawór odcinający",
-        "path": [
-            "core",
-            "leakageShutoffValveState"
-        ],
-    },
-
-}
-
 
 
 async def async_setup_entry(
@@ -40,78 +15,43 @@ async def async_setup_entry(
     async_add_entities
 ):
 
-    coordinator = hass.data[DOMAIN][entry.entry_id]
-
-    async_add_entities(
-        [
-            HustyBinarySensor(
-                coordinator,
-                key,
-                data
-            )
-
-            for key, data in BINARY_SENSORS.items()
-        ]
+    coordinator = (
+        hass.data[DOMAIN][entry.entry_id]
     )
 
 
+    async_add_entities([
 
-class HustyBinarySensor(BinarySensorEntity):
+        HustyValveSensor(
+            coordinator
+        ),
 
-    def __init__(
-        self,
-        coordinator,
-        key,
-        data
-    ):
+        HustyOnlineSensor(
+            coordinator
+        ),
 
-        self.coordinator = coordinator
+    ])
 
-        self.path = data["path"]
 
-        self._attr_unique_id = (
-            f"husty_{key}"
-        )
 
-        self._attr_name = (
-            f"Husty {data['name']}"
-        )
+class HustyValveSensor(
+    CoordinatorEntity,
+    BinarySensorEntity
+):
 
-        self._attr_icon = (
-            "mdi:valve"
-            if key == "shutoff_valve"
-            else "mdi:check-network"
-        )
+    _attr_name = (
+        "Husty Zawór zamknięty"
+    )
 
+    _attr_icon = (
+        "mdi:valve"
+    )
 
 
     @property
-    def device_info(self):
+    def unique_id(self):
 
-        data = (
-            self.coordinator.data[1]
-            ["result"]
-            ["data"]
-            ["json"]
-        )
-
-        return DeviceInfo(
-            identifiers={
-                (
-                    DOMAIN,
-                    data["deviceId"]
-                )
-            },
-
-            name="Husty SaoCal 250 LE",
-
-            manufacturer="Husty",
-
-            model=data["core"]["model"],
-
-            sw_version=data["core"]["version"],
-        )
-
+        return "husty_valve_closed"
 
 
     @property
@@ -124,20 +64,42 @@ class HustyBinarySensor(BinarySensorEntity):
             ["json"]
         )
 
+        state = (
+            data["core"]
+            .get(
+                "leakageShutoffValveState"
+            )
+        )
 
-        for item in self.path:
-
-            data = data[item]
-
-
-        if self.path[-1] == "connectionState":
-
-            return data == "Connected"
-
-
-        if self.path[-1] == "leakageShutoffValveState":
-
-            return data == 0
+        return state == 2
 
 
-        return bool(data)
+
+class HustyOnlineSensor(
+    CoordinatorEntity,
+    BinarySensorEntity
+):
+
+    _attr_name = (
+        "Husty Online"
+    )
+
+    _attr_icon = (
+        "mdi:cloud-check"
+    )
+
+
+    @property
+    def is_on(self):
+
+        data = (
+            self.coordinator.data[1]
+            ["result"]
+            ["data"]
+            ["json"]
+        )
+
+        return (
+            data.get("status")
+            == "online"
+        )
