@@ -138,7 +138,6 @@ async def async_setup_entry(
 
     coordinator = hass.data[DOMAIN][entry.entry_id]
 
-
     async_add_entities(
         [
             HustySensor(
@@ -163,7 +162,6 @@ class HustySensor(SensorEntity):
     ):
 
         self.coordinator = coordinator
-
         self.path = data["path"]
 
         self._attr_unique_id = (
@@ -183,21 +181,27 @@ class HustySensor(SensorEntity):
         )
 
 
+        # Liczniki zużycia wody
         if data.get("total"):
-
-            self._attr_state_class = (
-                "total_increasing"
-            )
 
             self._attr_device_class = (
                 "water"
             )
 
+            self._attr_state_class = (
+                "total_increasing"
+            )
 
+
+        # Aktualny przepływ
         if data.get("flow"):
 
             self._attr_device_class = (
                 "volume_flow_rate"
+            )
+
+            self._attr_state_class = (
+                "measurement"
             )
 
 
@@ -211,7 +215,6 @@ class HustySensor(SensorEntity):
             ["data"]
             ["json"]
         )
-
 
         return DeviceInfo(
 
