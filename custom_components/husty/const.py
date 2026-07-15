@@ -17,4 +17,4 @@ DEVICE_URL = (
     "/api/trpc/device.getSensorsForSoftener,device.getDevice"
 )
 
-SCAN_INTERVAL = 300
+SCAN_INTERVAL = 60
