@@ -1,240 +1,128 @@
-from homeassistant.components.sensor import SensorEntity
-from homeassistant.helpers.entity import DeviceInfo
-from homeassistant.util import dt as dt_util
+from datetime import datetime
+
+from homeassistant.components.sensor import (
+    SensorEntity,
+)
+from homeassistant.helpers.update_coordinator import (
+    CoordinatorEntity,
+)
 
 from .const import DOMAIN
 
 
 SENSORS = {
 
-    "salt_level": {
+    "salt": {
         "name": "Sól",
-        "path": [
-            "core",
-            "saltLevel1"
-        ],
+        "icon": "mdi:shaker-outline",
         "unit": "kg",
-        "icon": "mdi:shaker",
     },
 
-
-    "water_remaining": {
+    "water_left": {
         "name": "Pozostała woda",
-        "path": [
-            "core",
-            "waterSupply"
-        ],
-        "unit": "L",
         "icon": "mdi:water",
+        "unit": "L",
     },
 
-
-    "water_remaining_percent": {
+    "water_left_percent": {
         "name": "Pozostała woda procent",
-        "path": [
-            "core",
-            "waterSupplyPercent"
-        ],
-        "unit": "%",
         "icon": "mdi:water-percent",
+        "unit": "%",
     },
 
-
-    "water_flow": {
+    "flow": {
         "name": "Przepływ wody",
-        "path": [
-            "core",
-            "waterFlow"
-        ],
-        "unit": "L/min",
         "icon": "mdi:water-pump",
-        "flow": True,
+        "unit": "L/min",
     },
-
 
     "water_today": {
         "name": "Zużycie wody dzisiaj",
-        "path": [
-            "core",
-            "consumption",
-            "today",
-            "total"
-        ],
-        "unit": "L",
         "icon": "mdi:water",
-        "total": True,
+        "unit": "L",
     },
-
 
     "water_month": {
         "name": "Zużycie wody miesiąc",
-        "path": [
-            "core",
-            "consumption",
-            "month",
-            "total"
-        ],
-        "unit": "L",
         "icon": "mdi:calendar-month",
-        "total": True,
-    },
-
-
-    "water_total": {
-        "name": "Zużycie wody całkowite",
-        "path": [
-            "core",
-            "consumption",
-            "year",
-            "total"
-        ],
         "unit": "L",
-        "icon": "mdi:water-sync",
-        "total": True,
     },
 
+    "water_hour": {
+        "name": "Zużycie wody aktualna godzina",
+        "icon": "mdi:clock-water",
+        "unit": "L",
+    },
 
-    "regeneration_days": {
+    "regeneration_left": {
         "name": "Regeneracja za",
-        "path": [
-            "core",
-            "remainingDaysToNextRegeneration"
-        ],
+        "icon": "mdi:autorenew",
         "unit": "dni",
-        "icon": "mdi:calendar-refresh",
     },
-
 
     "salt_regenerations": {
         "name": "Pozostałe regeneracje z soli",
-        "path": [
-            "core",
-            "saltRegenerationsLeft"
-        ],
+        "icon": "mdi:counter",
         "unit": None,
-        "icon": "mdi:shaker-outline",
-    },
-
-
-    "last_connection": {
-        "name": "Ostatnie połączenie",
-        "path": [
-            "metadata",
-            "lastReportedAt"
-        ],
-        "unit": None,
-        "icon": "mdi:lan-connect",
     },
 
 }
 
 
-
-async def async_setup_entry(
-    hass,
-    entry,
-    async_add_entities
-):
+async def async_setup_entry(hass, entry, async_add_entities):
 
     coordinator = hass.data[DOMAIN][entry.entry_id]
 
-    async_add_entities(
-        [
+    entities = []
+
+    for key, cfg in SENSORS.items():
+
+        entities.append(
             HustySensor(
                 coordinator,
                 key,
-                data
+                cfg,
             )
+        )
 
-            for key, data in SENSORS.items()
-        ]
-    )
-
+    async_add_entities(entities)
 
 
-class HustySensor(SensorEntity):
+class HustySensor(
+    CoordinatorEntity,
+    SensorEntity
+):
 
     def __init__(
         self,
         coordinator,
         key,
-        data
+        cfg,
     ):
 
-        self.coordinator = coordinator
-        self.path = data["path"]
+        super().__init__(coordinator)
 
-        self._attr_unique_id = (
-            f"husty_{key}"
-        )
+        self.key = key
+        self.cfg = cfg
 
         self._attr_name = (
-            f"Husty {data['name']}"
+            f"Husty {cfg['name']}"
         )
 
-        self._attr_icon = (
-            data["icon"]
-        )
+        self._attr_icon = cfg["icon"]
 
-        self._attr_native_unit_of_measurement = (
-            data["unit"]
-        )
-
-
-        # Liczniki zużycia wody
-        if data.get("total"):
-
-            self._attr_device_class = (
-                "water"
+        if cfg["unit"]:
+            self._attr_native_unit_of_measurement = (
+                cfg["unit"]
             )
-
-            self._attr_state_class = (
-                "total_increasing"
-            )
-
-
-        # Aktualny przepływ
-        if data.get("flow"):
-
-            self._attr_device_class = (
-                "volume_flow_rate"
-            )
-
-            self._attr_state_class = (
-                "measurement"
-            )
-
 
 
     @property
-    def device_info(self):
+    def unique_id(self):
 
-        data = (
-            self.coordinator.data[1]
-            ["result"]
-            ["data"]
-            ["json"]
+        return (
+            f"husty_{self.key}"
         )
-
-        return DeviceInfo(
-
-            identifiers={
-                (
-                    DOMAIN,
-                    data["deviceId"]
-                )
-            },
-
-            name="Husty SaoCal 250 LE",
-
-            manufacturer="Husty",
-
-            model=data["core"]["model"],
-
-            sw_version=data["core"]["version"],
-
-        )
-
 
 
     @property
@@ -247,15 +135,117 @@ class HustySensor(SensorEntity):
             ["json"]
         )
 
-
-        for item in self.path:
-
-            data = data[item]
-
-
-        if self.path[-1] == "lastReportedAt":
-
-            return dt_util.parse_datetime(data)
+        core = data.get(
+            "core",
+            {}
+        )
 
 
-        return data
+        if self.key == "salt":
+
+            return core.get(
+                "saltLevel1"
+            )
+
+
+        if self.key == "water_left":
+
+            return core.get(
+                "waterSupply"
+            )
+
+
+        if self.key == "water_left_percent":
+
+            return core.get(
+                "waterSupplyPercent"
+            )
+
+
+        if self.key == "flow":
+
+            return core.get(
+                "waterFlow"
+            )
+
+
+        if self.key == "water_today":
+
+            return (
+                core
+                .get("consumption", {})
+                .get("today", {})
+                .get("total")
+            )
+
+
+        if self.key == "water_month":
+
+            return (
+                core
+                .get("consumption", {})
+                .get("month", {})
+                .get("total")
+            )
+
+
+        if self.key == "water_hour":
+
+            hour = datetime.now().hour
+
+            values = (
+                core
+                .get("consumption", {})
+                .get("today", {})
+                .get("value", [])
+            )
+
+            if len(values) > hour:
+                return values[hour]
+
+            return 0
+
+
+        if self.key == "regeneration_left":
+
+            return core.get(
+                "remainingDaysToNextRegeneration"
+            )
+
+
+        if self.key == "salt_regenerations":
+
+            return core.get(
+                "saltRegenerationsLeft"
+            )
+
+
+        return None
+
+
+    @property
+    def extra_state_attributes(self):
+
+        if self.key == "water_today":
+
+            data = (
+                self.coordinator.data[1]
+                ["result"]
+                ["data"]
+                ["json"]
+            )
+
+            values = (
+                data["core"]
+                ["consumption"]
+                ["today"]
+                ["value"]
+            )
+
+            return {
+                f"{h:02}:00": value
+                for h, value in enumerate(values)
+            }
+
+
+        return {}
