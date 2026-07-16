@@ -1,0 +1,35 @@
+{
+  "title": "Husty",
+  "config": {
+    "step": {
+      "user": {
+        "title": "Połącz z Husty",
+        "description": "Podaj dane logowania do aplikacji Husty oraz identyfikator uzdatniacza.",
+        "data": {
+          "email": "Adres e-mail",
+          "password": "Hasło",
+          "device_id": "ID urządzenia"
+        },
+        "data_description": {
+          "device_id": "Na przykład M261604255"
+        }
+      }
+    },
+    "error": {
+      "cannot_connect": "Nie udało się połączyć z usługą Husty.",
+      "invalid_auth": "Nieprawidłowy adres e-mail lub hasło.",
+      "invalid_response": "Usługa Husty zwróciła nieprawidłowe dane.",
+      "unknown": "Wystąpił nieoczekiwany błąd."
+    },
+    "abort": {
+      "already_configured": "To urządzenie Husty jest już skonfigurowane."
+    }
+  },
+  "entity": {
+    "sensor": {
+      "water_remaining_percent": {
+        "name": "Pozostała woda procent"
+      }
+    }
+  }
+}
