@@ -1,5 +1,7 @@
 from datetime import datetime
 
+from homeassistant.helpers.update_coordinator import CoordinatorEntity
+
 from homeassistant.components.sensor import (
     SensorEntity,
 )
@@ -88,10 +90,7 @@ async def async_setup_entry(hass, entry, async_add_entities):
     async_add_entities(entities)
 
 
-class HustySensor(
-    CoordinatorEntity,
-    SensorEntity
-):
+class HustySensor(CoordinatorEntity, SensorEntity):
 
     def __init__(
         self,
