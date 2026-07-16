@@ -1,7 +1,12 @@
 {
   "domain": "husty",
   "name": "Husty",
-  "version": "1.0.0",
+  "version": "0.0.6",
   "config_flow": true,
-  "iot_class": "cloud_polling"
+  "documentation": "https://github.com/trafopowielacz/husty_integration_home_assistant",
+  "issue_tracker": "https://github.com/trafopowielacz/husty_integration_home_assistant/issues",
+  "iot_class": "cloud_polling",
+  "requirements": [],
+  "dependencies": [],
+  "codeowners": []
 }
