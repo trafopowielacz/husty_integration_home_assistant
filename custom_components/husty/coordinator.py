@@ -1,159 +1,79 @@
-import aiohttp
-import json
+"""Data coordinator for Husty."""
+
+from __future__ import annotations
+
 import logging
+from typing import Any
 
-from datetime import timedelta
-
+from homeassistant.config_entries import ConfigEntry
+from homeassistant.core import HomeAssistant
+from homeassistant.exceptions import ConfigEntryAuthFailed
 from homeassistant.helpers.update_coordinator import (
     DataUpdateCoordinator,
+    UpdateFailed,
 )
 
-from .const import (
-    LOGIN_URL,
-    DEVICE_URL,
-    SCAN_INTERVAL,
+from .api import (
+    HustyApiClient,
+    HustyAuthenticationError,
+    HustyConnectionError,
+    HustyInvalidResponseError,
 )
-
+from .const import DOMAIN, UPDATE_INTERVAL
 
 _LOGGER = logging.getLogger(__name__)
 
 
-class HustyCoordinator(DataUpdateCoordinator):
-    """Husty API coordinator."""
+class HustyCoordinator(
+    DataUpdateCoordinator[dict[str, Any]]
+):
+    """Coordinate Husty API updates."""
+
+    config_entry: ConfigEntry
 
     def __init__(
         self,
-        hass,
-        email,
-        password,
-        device_id,
-    ):
+        hass: HomeAssistant,
+        config_entry: ConfigEntry,
+        api: HustyApiClient,
+    ) -> None:
+        """Initialize the coordinator."""
 
-        self.email = email
-        self.password = password
-        self.device_id = device_id
-
-        self.session = aiohttp.ClientSession()
-        self.cookies = None
+        self.api = api
 
         super().__init__(
             hass,
             _LOGGER,
-            name="Husty API",
-            update_interval=timedelta(
-                seconds=SCAN_INTERVAL
-            ),
+            config_entry=config_entry,
+            name=DOMAIN,
+            update_interval=UPDATE_INTERVAL,
+            always_update=True,
         )
 
-
-    async def login(self):
-        """Login to Husty."""
-
-        _LOGGER.debug(
-            "Logging into Husty API"
-        )
-
-        response = await self.session.post(
-            LOGIN_URL,
-            json={
-                "email": self.email,
-                "password": self.password,
-            },
-        )
-
-        response.raise_for_status()
-
-
-        self.cookies = {
-            key: morsel.value
-            for key, morsel in response.cookies.items()
-        }
-
-
-        _LOGGER.info(
-            "Husty login successful"
-        )
-
-
-
-    async def _async_update_data(self):
-        """Fetch data from Husty API."""
-
-        if not self.cookies:
-            await self.login()
-
-
-        query = {
-            "batch": "1",
-            "input": json.dumps(
-                {
-                    "0": {
-                        "json": {
-                            "softenerDeviceId":
-                                self.device_id
-                        }
-                    },
-
-                    "1": {
-                        "json": {
-                            "deviceId":
-                                self.device_id
-                        }
-                    },
-                }
-            ),
-        }
-
+    async def _async_update_data(self) -> dict[str, Any]:
+        """Fetch the newest data from Husty."""
 
         try:
+            data = await self.api.async_get_data()
 
-            response = await self.session.get(
-                DEVICE_URL,
-                params=query,
-                cookies=self.cookies,
-            )
+        except HustyAuthenticationError as err:
+            raise ConfigEntryAuthFailed(
+                "Logowanie do Husty nie powiodło się"
+            ) from err
 
+        except (
+            HustyConnectionError,
+            HustyInvalidResponseError,
+        ) as err:
+            raise UpdateFailed(str(err)) from err
 
-            # sesja wygasła
-            if response.status in (401, 403):
+        device = data.get("device", {})
+        metadata = device.get("metadata", {})
 
-                _LOGGER.warning(
-                    "Husty session expired, relogin"
-                )
+        _LOGGER.debug(
+            "Odświeżono dane Husty. Urządzenie: %s, raport: %s",
+            device.get("deviceId"),
+            metadata.get("lastReportedAt"),
+        )
 
-
-                await self.login()
-
-
-                response = await self.session.get(
-                    DEVICE_URL,
-                    params=query,
-                    cookies=self.cookies,
-                )
-
-
-            response.raise_for_status()
-
-
-            return await response.json()
-
-
-
-        except aiohttp.ClientError as err:
-
-            _LOGGER.error(
-                "Husty API error: %s",
-                err
-            )
-
-            raise
-
-
-
-    async def async_shutdown(self):
-
-        """Close HTTP session."""
-
-        if self.session:
-
-            await self.session.close()
+        return data
