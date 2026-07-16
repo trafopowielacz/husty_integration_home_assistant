@@ -1,20 +1,28 @@
+"""Constants for the Husty integration."""
+
+from datetime import timedelta
+
 DOMAIN = "husty"
+
+CONF_EMAIL = "email"
+CONF_PASSWORD = "password"
+CONF_DEVICE_ID = "device_id"
+
+PLATFORMS = [
+    "sensor",
+    "binary_sensor",
+]
 
 API_URL = "https://aplikacja.husty.pl"
 
-LOGIN_URL = (
-    API_URL +
-    "/api/auth/sign-in/email"
-)
-
-SESSION_URL = (
-    API_URL +
-    "/api/auth/get-session"
-)
+LOGIN_URL = f"{API_URL}/api/auth/sign-in/email"
+SESSION_URL = f"{API_URL}/api/auth/get-session"
 
 DEVICE_URL = (
-    API_URL +
-    "/api/trpc/device.getSensorsForSoftener,device.getDevice"
+    f"{API_URL}/api/trpc/"
+    "device.getSensorsForSoftener,device.getDevice"
 )
 
-SCAN_INTERVAL = 60
+UPDATE_INTERVAL = timedelta(seconds=60)
+
+REQUEST_TIMEOUT = 30
