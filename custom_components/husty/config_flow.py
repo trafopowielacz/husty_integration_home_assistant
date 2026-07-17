@@ -3,12 +3,16 @@
 from __future__ import annotations
 
 import logging
-from typing import Any
+from typing import Any, Mapping
 
 import voluptuous as vol
 
 from homeassistant import config_entries
 from homeassistant.data_entry_flow import FlowResult
+from homeassistant.helpers.aiohttp_client import (
+    async_get_clientsession,
+)
+from homeassistant.helpers import selector
 
 from .api import (
     HustyApiClient,
@@ -17,20 +21,23 @@ from .api import (
     HustyInvalidResponseError,
 )
 from .const import (
-    CONF_DEVICE_ID,
-    CONF_EMAIL,
-    CONF_PASSWORD,
+    CONF_API_KEY,
+    DEVICE_URL,
     DOMAIN,
+    REQUEST_TIMEOUT,
 )
 
 _LOGGER = logging.getLogger(__name__)
 
 
-STEP_USER_SCHEMA = vol.Schema(
+API_KEY_SCHEMA = vol.Schema(
     {
-        vol.Required(CONF_EMAIL): str,
-        vol.Required(CONF_PASSWORD): str,
-        vol.Required(CONF_DEVICE_ID): str,
+        vol.Required(CONF_API_KEY): selector.TextSelector(
+            selector.TextSelectorConfig(
+                type=selector.TextSelectorType.PASSWORD,
+                autocomplete="off",
+            )
+        )
     }
 )
 
@@ -39,32 +46,43 @@ class HustyConfigFlow(
     config_entries.ConfigFlow,
     domain=DOMAIN,
 ):
-    """Handle a config flow for Husty."""
+    """Handle the Husty config flow."""
 
-    VERSION = 1
-    MINOR_VERSION = 1
+    VERSION = 2
+    MINOR_VERSION = 0
+
+    async def _async_validate_api_key(
+        self,
+        api_key: str,
+    ) -> dict[str, Any]:
+        """Validate an API key and return the device."""
+
+        session = async_get_clientsession(self.hass)
+
+        client = HustyApiClient(
+            session=session,
+            api_key=api_key,
+            device_url=DEVICE_URL,
+            request_timeout=REQUEST_TIMEOUT,
+        )
+
+        return await client.async_get_device()
 
     async def async_step_user(
         self,
         user_input: dict[str, Any] | None = None,
     ) -> FlowResult:
-        """Handle the initial setup step."""
+        """Handle initial setup."""
 
         errors: dict[str, str] = {}
 
         if user_input is not None:
-            email = user_input[CONF_EMAIL].strip().lower()
-            password = user_input[CONF_PASSWORD]
-            device_id = user_input[CONF_DEVICE_ID].strip()
-
-            api = HustyApiClient(
-                email=email,
-                password=password,
-                device_id=device_id,
-            )
+            api_key = user_input[CONF_API_KEY].strip()
 
             try:
-                data = await api.async_get_data()
+                device = await self._async_validate_api_key(
+                    api_key
+                )
 
             except HustyAuthenticationError:
                 errors["base"] = "invalid_auth"
@@ -82,26 +100,85 @@ class HustyConfigFlow(
                 errors["base"] = "unknown"
 
             else:
-                device = data.get("device", {})
-                core = device.get("core", {})
+                device_id = device["deviceId"]
+                metadata = device.get("metadata", {})
 
                 await self.async_set_unique_id(device_id)
                 self._abort_if_unique_id_configured()
 
+                title = (
+                    metadata.get("modelName")
+                    or "Husty"
+                )
+
                 return self.async_create_entry(
-                    title=core.get("model") or "Husty",
+                    title=title,
                     data={
-                        CONF_EMAIL: email,
-                        CONF_PASSWORD: password,
-                        CONF_DEVICE_ID: device_id,
+                        CONF_API_KEY: api_key,
                     },
                 )
 
-            finally:
-                await api.async_close()
-
         return self.async_show_form(
             step_id="user",
-            data_schema=STEP_USER_SCHEMA,
+            data_schema=API_KEY_SCHEMA,
+            errors=errors,
+        )
+
+    async def async_step_reauth(
+        self,
+        entry_data: Mapping[str, Any],
+    ) -> FlowResult:
+        """Start API key reauthentication."""
+
+        return await self.async_step_reauth_confirm()
+
+    async def async_step_reauth_confirm(
+        self,
+        user_input: dict[str, Any] | None = None,
+    ) -> FlowResult:
+        """Handle replacement of an invalid API key."""
+
+        errors: dict[str, str] = {}
+
+        if user_input is not None:
+            api_key = user_input[CONF_API_KEY].strip()
+
+            try:
+                device = await self._async_validate_api_key(
+                    api_key
+                )
+
+            except HustyAuthenticationError:
+                errors["base"] = "invalid_auth"
+
+            except HustyConnectionError:
+                errors["base"] = "cannot_connect"
+
+            except HustyInvalidResponseError:
+                errors["base"] = "invalid_response"
+
+            except Exception:
+                _LOGGER.exception(
+                    "Nieoczekiwany błąd ponownej "
+                    "autoryzacji Husty"
+                )
+                errors["base"] = "unknown"
+
+            else:
+                device_id = device["deviceId"]
+
+                await self.async_set_unique_id(device_id)
+                self._abort_if_unique_id_mismatch()
+
+                return self.async_update_reload_and_abort(
+                    self._get_reauth_entry(),
+                    data_updates={
+                        CONF_API_KEY: api_key,
+                    },
+                )
+
+        return self.async_show_form(
+            step_id="reauth_confirm",
+            data_schema=API_KEY_SCHEMA,
             errors=errors,
         )
