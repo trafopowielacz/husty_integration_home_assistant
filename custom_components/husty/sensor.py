@@ -15,6 +15,7 @@ from homeassistant.components.sensor import (
 from homeassistant.const import (
     PERCENTAGE,
     UnitOfMass,
+    UnitOfTime,
     UnitOfVolume,
     UnitOfVolumeFlowRate,
 )
@@ -41,18 +42,15 @@ class HustySensorEntityDescription(
     value_fn: Callable[[Any], Any] | None = None
 
 
-def parse_timestamp(value: Any) -> datetime | None:
-    """Parse an ISO timestamp returned by Husty."""
+def parse_timestamp(
+    value: Any,
+) -> datetime | None:
+    """Parse an ISO timestamp."""
 
     if not isinstance(value, str):
         return None
 
-    parsed = dt_util.parse_datetime(value)
-
-    if parsed is None:
-        return None
-
-    return parsed
+    return dt_util.parse_datetime(value)
 
 
 SENSOR_DESCRIPTIONS: tuple[
@@ -85,8 +83,7 @@ SENSOR_DESCRIPTIONS: tuple[
     ),
     HustySensorEntityDescription(
         key="water_remaining_percent",
-        name="Pozostała woda",
-        translation_key="water_remaining_percent",
+        name="Pozostała woda procent",
         icon="mdi:water-percent",
         path=("core", "waterSupplyPercent"),
         native_unit_of_measurement=PERCENTAGE,
@@ -182,27 +179,36 @@ SENSOR_DESCRIPTIONS: tuple[
             "core",
             "remainingDaysToNextRegeneration",
         ),
-        native_unit_of_measurement="d",
+        native_unit_of_measurement=UnitOfTime.DAYS,
         state_class=SensorStateClass.MEASUREMENT,
     ),
     HustySensorEntityDescription(
         key="salt_regenerations_left",
         name="Pozostałe regeneracje z soli",
         icon="mdi:counter",
-        path=("core", "saltRegenerationsLeft"),
+        path=(
+            "core",
+            "saltRegenerationsLeft",
+        ),
         state_class=SensorStateClass.MEASUREMENT,
     ),
     HustySensorEntityDescription(
         key="regeneration_time",
         name="Planowana godzina regeneracji",
         icon="mdi:clock-outline",
-        path=("core", "delayedRegenerationTime"),
+        path=(
+            "core",
+            "delayedRegenerationTime",
+        ),
     ),
     HustySensorEntityDescription(
         key="last_reported",
         name="Ostatnie połączenie",
         icon="mdi:cloud-clock",
-        path=("metadata", "lastReportedAt"),
+        path=(
+            "metadata",
+            "lastUpdatedAt",
+        ),
         device_class=SensorDeviceClass.TIMESTAMP,
         value_fn=parse_timestamp,
     ),
@@ -240,7 +246,7 @@ class HustySensor(
         coordinator,
         description: HustySensorEntityDescription,
     ) -> None:
-        """Initialize the Husty sensor."""
+        """Initialize the sensor."""
 
         super().__init__(
             coordinator,
@@ -251,10 +257,10 @@ class HustySensor(
 
     @property
     def native_value(self) -> Any:
-        """Return the current sensor value."""
+        """Return the sensor value."""
 
         value = get_nested_value(
-            self.device_data,
+            self.coordinator.data,
             self.entity_description.path,
         )
 
