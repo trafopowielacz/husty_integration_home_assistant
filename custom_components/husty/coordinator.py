@@ -1,4 +1,4 @@
-"""Data coordinator for Husty."""
+"""Data update coordinator for Husty."""
 
 from __future__ import annotations
 
@@ -27,9 +27,7 @@ _LOGGER = logging.getLogger(__name__)
 class HustyCoordinator(
     DataUpdateCoordinator[dict[str, Any]]
 ):
-    """Coordinate Husty API updates."""
-
-    config_entry: ConfigEntry
+    """Coordinate periodic updates from Husty."""
 
     def __init__(
         self,
@@ -50,30 +48,33 @@ class HustyCoordinator(
             always_update=True,
         )
 
-    async def _async_update_data(self) -> dict[str, Any]:
-        """Fetch the newest data from Husty."""
+    async def _async_update_data(
+        self,
+    ) -> dict[str, Any]:
+        """Fetch current Husty data."""
 
         try:
-            data = await self.api.async_get_data()
+            data = await self.api.async_get_device()
 
         except HustyAuthenticationError as err:
             raise ConfigEntryAuthFailed(
-                "Logowanie do Husty nie powiodło się"
+                str(err)
             ) from err
 
         except (
             HustyConnectionError,
             HustyInvalidResponseError,
         ) as err:
-            raise UpdateFailed(str(err)) from err
+            raise UpdateFailed(
+                str(err)
+            ) from err
 
-        device = data.get("device", {})
-        metadata = device.get("metadata", {})
+        metadata = data.get("metadata", {})
 
         _LOGGER.debug(
-            "Odświeżono dane Husty. Urządzenie: %s, raport: %s",
-            device.get("deviceId"),
-            metadata.get("lastReportedAt"),
+            "Odświeżono Husty: device_id=%s, last_updated=%s",
+            data.get("deviceId"),
+            metadata.get("lastUpdatedAt"),
         )
 
         return data
