@@ -41,22 +41,31 @@ BINARY_SENSOR_DESCRIPTIONS: tuple[
         name="Połączenie",
         icon="mdi:cloud-check",
         device_class=BinarySensorDeviceClass.CONNECTIVITY,
-        path=("metadata", "connectionState"),
-        value_fn=lambda value: value == "Connected",
+        path=(
+            "metadata",
+            "isConnected",
+        ),
+        value_fn=bool,
     ),
     HustyBinarySensorEntityDescription(
         key="regeneration_active",
         name="Regeneracja",
         icon="mdi:autorenew",
         device_class=BinarySensorDeviceClass.RUNNING,
-        path=("core", "regenerationInProgress"),
+        path=(
+            "core",
+            "regenerationInProgress",
+        ),
         value_fn=bool,
     ),
     HustyBinarySensorEntityDescription(
         key="leak_protection",
         name="Ochrona przed wyciekiem",
         icon="mdi:water-lock",
-        path=("core", "leakageProtectionState"),
+        path=(
+            "core",
+            "leakageProtectionState",
+        ),
         value_fn=lambda value: value == "automatic",
     ),
     HustyBinarySensorEntityDescription(
@@ -64,7 +73,10 @@ BINARY_SENSOR_DESCRIPTIONS: tuple[
         name="Dostępna aktualizacja",
         icon="mdi:update",
         device_class=BinarySensorDeviceClass.UPDATE,
-        path=("core", "newFirmwareAvailable"),
+        path=(
+            "core",
+            "newFirmwareAvailable",
+        ),
         value_fn=bool,
         entity_registry_enabled_default=False,
     ),
@@ -95,14 +107,18 @@ class HustyBinarySensor(
 ):
     """Representation of a Husty binary sensor."""
 
-    entity_description: HustyBinarySensorEntityDescription
+    entity_description: (
+        HustyBinarySensorEntityDescription
+    )
 
     def __init__(
         self,
         coordinator,
-        description: HustyBinarySensorEntityDescription,
+        description: (
+            HustyBinarySensorEntityDescription
+        ),
     ) -> None:
-        """Initialize the Husty binary sensor."""
+        """Initialize the binary sensor."""
 
         super().__init__(
             coordinator,
@@ -116,11 +132,13 @@ class HustyBinarySensor(
         """Return the binary sensor state."""
 
         value = get_nested_value(
-            self.device_data,
+            self.coordinator.data,
             self.entity_description.path,
         )
 
         if value is None:
             return None
 
-        return self.entity_description.value_fn(value)
+        return self.entity_description.value_fn(
+            value
+        )
