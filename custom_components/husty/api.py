@@ -94,6 +94,11 @@ class HustyApiClient:
                 LOGIN_URL,
                 json=payload,
             ) as response:
+                _LOGGER.debug(
+                    "Husty login status: %s cookies: %s",
+                     response.status,
+                     list(session.cookie_jar),
+                )
                 if response.status in (401, 403):
                     self._authenticated = False
                     raise HustyAuthenticationError(
