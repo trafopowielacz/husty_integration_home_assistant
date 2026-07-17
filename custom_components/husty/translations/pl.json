@@ -4,32 +4,31 @@
     "step": {
       "user": {
         "title": "Połącz z Husty",
-        "description": "Podaj dane logowania do aplikacji Husty oraz identyfikator uzdatniacza.",
+        "description": "Wprowadź klucz API wygenerowany w ustawieniach urządzenia Husty.",
         "data": {
-          "email": "Adres e-mail",
-          "password": "Hasło",
-          "device_id": "ID urządzenia"
+          "api_key": "Klucz API"
         },
         "data_description": {
-          "device_id": "Na przykład M261604255"
+          "api_key": "Klucz jest przypisany do konkretnego uzdatniacza."
+        }
+      },
+      "reauth_confirm": {
+        "title": "Zaktualizuj klucz API Husty",
+        "description": "Dotychczasowy klucz API jest nieprawidłowy lub został unieważniony. Wprowadź nowy klucz.",
+        "data": {
+          "api_key": "Nowy klucz API"
         }
       }
     },
     "error": {
-      "cannot_connect": "Nie udało się połączyć z usługą Husty.",
-      "invalid_auth": "Nieprawidłowy adres e-mail lub hasło.",
-      "invalid_response": "Usługa Husty zwróciła nieprawidłowe dane.",
+      "cannot_connect": "Nie udało się połączyć z API Husty.",
+      "invalid_auth": "Klucz API jest nieprawidłowy lub został unieważniony.",
+      "invalid_response": "API Husty zwróciło nieprawidłowe dane.",
       "unknown": "Wystąpił nieoczekiwany błąd."
     },
     "abort": {
-      "already_configured": "To urządzenie Husty jest już skonfigurowane."
-    }
-  },
-  "entity": {
-    "sensor": {
-      "water_remaining_percent": {
-        "name": "Pozostała woda procent"
-      }
+      "already_configured": "To urządzenie Husty jest już skonfigurowane.",
+      "reauth_successful": "Klucz API został zaktualizowany."
     }
   }
 }
