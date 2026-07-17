@@ -4,18 +4,21 @@ from __future__ import annotations
 
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
+from homeassistant.exceptions import ConfigEntryAuthFailed
+from homeassistant.helpers.aiohttp_client import (
+    async_get_clientsession,
+)
 
 from .api import HustyApiClient
 from .const import (
-    CONF_DEVICE_ID,
-    CONF_EMAIL,
-    CONF_PASSWORD,
-    DOMAIN,
+    CONF_API_KEY,
+    DEVICE_URL,
     PLATFORMS,
+    REQUEST_TIMEOUT,
 )
 from .coordinator import HustyCoordinator
 
-type HustyConfigEntry = ConfigEntry[HustyCoordinator]
+HustyConfigEntry = ConfigEntry[HustyCoordinator]
 
 
 async def async_setup_entry(
@@ -24,10 +27,20 @@ async def async_setup_entry(
 ) -> bool:
     """Set up Husty from a config entry."""
 
+    api_key = entry.data.get(CONF_API_KEY)
+
+    if not isinstance(api_key, str) or not api_key:
+        raise ConfigEntryAuthFailed(
+            "Wymagany jest klucz API Husty"
+        )
+
+    session = async_get_clientsession(hass)
+
     api = HustyApiClient(
-        email=entry.data[CONF_EMAIL],
-        password=entry.data[CONF_PASSWORD],
-        device_id=entry.data[CONF_DEVICE_ID],
+        session=session,
+        api_key=api_key,
+        device_url=DEVICE_URL,
+        request_timeout=REQUEST_TIMEOUT,
     )
 
     coordinator = HustyCoordinator(
@@ -39,8 +52,6 @@ async def async_setup_entry(
     await coordinator.async_config_entry_first_refresh()
 
     entry.runtime_data = coordinator
-
-    hass.data.setdefault(DOMAIN, {})[entry.entry_id] = coordinator
 
     await hass.config_entries.async_forward_entry_setups(
         entry,
@@ -56,20 +67,7 @@ async def async_unload_entry(
 ) -> bool:
     """Unload a Husty config entry."""
 
-    unload_ok = await hass.config_entries.async_unload_platforms(
+    return await hass.config_entries.async_unload_platforms(
         entry,
         PLATFORMS,
     )
-
-    if not unload_ok:
-        return False
-
-    coordinator = entry.runtime_data
-    await coordinator.api.async_close()
-
-    hass.data.get(DOMAIN, {}).pop(entry.entry_id, None)
-
-    if not hass.data.get(DOMAIN):
-        hass.data.pop(DOMAIN, None)
-
-    return True
