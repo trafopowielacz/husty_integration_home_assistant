@@ -1,4 +1,4 @@
-"""Base entity for Husty."""
+"""Base entity classes for Husty."""
 
 from __future__ import annotations
 
@@ -15,15 +15,15 @@ def get_nested_value(
     data: dict[str, Any],
     path: tuple[str, ...],
 ) -> Any:
-    """Return a nested value or None when the path is missing."""
+    """Return a nested value from a dictionary."""
 
     value: Any = data
 
-    for item in path:
+    for key in path:
         if not isinstance(value, dict):
             return None
 
-        value = value.get(item)
+        value = value.get(key)
 
         if value is None:
             return None
@@ -31,8 +31,10 @@ def get_nested_value(
     return value
 
 
-class HustyEntity(CoordinatorEntity[HustyCoordinator]):
-    """Base Husty entity."""
+class HustyEntity(
+    CoordinatorEntity[HustyCoordinator]
+):
+    """Base representation of a Husty entity."""
 
     _attr_has_entity_name = True
 
@@ -41,45 +43,45 @@ class HustyEntity(CoordinatorEntity[HustyCoordinator]):
         coordinator: HustyCoordinator,
         key: str,
     ) -> None:
-        """Initialize the entity."""
+        """Initialize a Husty entity."""
 
         super().__init__(coordinator)
 
         self._key = key
-        self._attr_unique_id = (
-            f"{coordinator.api.device_id}_{key}"
+
+        device_id = str(
+            coordinator.data.get("deviceId", "unknown")
         )
 
-    @property
-    def device_data(self) -> dict[str, Any]:
-        """Return normalized device data."""
-
-        return self.coordinator.data.get("device", {})
+        self._attr_unique_id = (
+            f"{device_id}_{key}"
+        )
 
     @property
     def device_info(self) -> DeviceInfo:
-        """Return Home Assistant device information."""
+        """Return the Home Assistant device information."""
 
-        device = self.device_data
-        core = device.get("core", {})
-        metadata = device.get("metadata", {})
+        data = self.coordinator.data
+        core = data.get("core", {})
+        metadata = data.get("metadata", {})
 
         device_id = str(
-            device.get("deviceId")
-            or self.coordinator.api.device_id
+            data.get("deviceId", "unknown")
         )
 
         model = (
-            core.get("model")
-            or metadata.get("modelName")
+            metadata.get("modelName")
             or "Uzdatniacz wody"
         )
 
         return DeviceInfo(
-            identifiers={(DOMAIN, device_id)},
+            identifiers={
+                (DOMAIN, device_id)
+            },
             name=f"Husty {model}",
             manufacturer="Husty",
             model=model,
             sw_version=core.get("version"),
             serial_number=device_id,
+            configuration_url="https://app.husty.pl",
         )
