@@ -16,49 +16,62 @@ from homeassistant.helpers.entity_platform import (
 )
 
 from . import HustyConfigEntry
-from .entity import HustyEntity, get_nested_value
+from .entity import (
+    HustyEntity,
+    HustyLeakEntity,
+    get_nested_value,
+)
 
 
 @dataclass(
     frozen=True,
     kw_only=True,
 )
-class HustyBinarySensorEntityDescription(
+class HustyBinarySensorDescription(
     BinarySensorEntityDescription
 ):
-    """Describe a Husty binary sensor."""
+    """Describe Husty binary sensor."""
 
     path: tuple[str, ...]
-    value_fn: Callable[[Any], bool] = bool
+    value_fn: Callable[[Any], bool]
+    leak_sensor: bool = False
 
 
-BINARY_SENSOR_DESCRIPTIONS: tuple[
-    HustyBinarySensorEntityDescription,
-    ...,
-] = (
-    HustyBinarySensorEntityDescription(
-        key="online",
+BINARY_SENSORS = (
+
+    # =========================
+    # SAOCAL 250 LE
+    # =========================
+
+    HustyBinarySensorDescription(
+        key="connection",
         name="Połączenie",
         icon="mdi:cloud-check",
-        device_class=BinarySensorDeviceClass.CONNECTIVITY,
+        device_class=(
+            BinarySensorDeviceClass.CONNECTIVITY
+        ),
         path=(
             "metadata",
             "isConnected",
         ),
         value_fn=bool,
     ),
-    HustyBinarySensorEntityDescription(
-        key="regeneration_active",
+
+    HustyBinarySensorDescription(
+        key="regeneration",
         name="Regeneracja",
         icon="mdi:autorenew",
-        device_class=BinarySensorDeviceClass.RUNNING,
+        device_class=(
+            BinarySensorDeviceClass.RUNNING
+        ),
         path=(
             "core",
             "regenerationInProgress",
         ),
         value_fn=bool,
     ),
-    HustyBinarySensorEntityDescription(
+
+    HustyBinarySensorDescription(
         key="leak_protection",
         name="Ochrona przed wyciekiem",
         icon="mdi:water-lock",
@@ -66,19 +79,44 @@ BINARY_SENSOR_DESCRIPTIONS: tuple[
             "core",
             "leakageProtectionState",
         ),
-        value_fn=lambda value: value == "automatic",
+        value_fn=lambda value: (
+            value == "automatic"
+        ),
     ),
-    HustyBinarySensorEntityDescription(
-        key="firmware_update_available",
-        name="Dostępna aktualizacja",
-        icon="mdi:update",
-        device_class=BinarySensorDeviceClass.UPDATE,
+
+
+    # =========================
+    # LEAK PROTECT
+    # =========================
+
+    HustyBinarySensorDescription(
+        key="flood_detected",
+        name="Wykrycie zalania",
+        icon="mdi:water-alert",
+        device_class=(
+            BinarySensorDeviceClass.MOISTURE
+        ),
         path=(
             "core",
-            "newFirmwareAvailable",
+            "floodDetected",
         ),
         value_fn=bool,
-        entity_registry_enabled_default=False,
+        leak_sensor=True,
+    ),
+
+    HustyBinarySensorDescription(
+        key="leak_connection",
+        name="Połączenie Leak Protect",
+        icon="mdi:cloud-check",
+        device_class=(
+            BinarySensorDeviceClass.CONNECTIVITY
+        ),
+        path=(
+            "metadata",
+            "isConnected",
+        ),
+        value_fn=bool,
+        leak_sensor=True,
     ),
 )
 
@@ -88,37 +126,44 @@ async def async_setup_entry(
     entry: HustyConfigEntry,
     async_add_entities: AddConfigEntryEntitiesCallback,
 ) -> None:
-    """Set up Husty binary sensors."""
+    """Create Husty binary sensors."""
 
     coordinator = entry.runtime_data
 
-    async_add_entities(
-        HustyBinarySensor(
-            coordinator,
-            description,
-        )
-        for description in BINARY_SENSOR_DESCRIPTIONS
-    )
+    entities = []
+
+    for description in BINARY_SENSORS:
+
+        if description.leak_sensor:
+            entities.append(
+                HustyLeakBinarySensor(
+                    coordinator,
+                    description,
+                )
+            )
+
+        else:
+            entities.append(
+                HustyBinarySensor(
+                    coordinator,
+                    description,
+                )
+            )
+
+    async_add_entities(entities)
 
 
 class HustyBinarySensor(
     HustyEntity,
     BinarySensorEntity,
 ):
-    """Representation of a Husty binary sensor."""
-
-    entity_description: (
-        HustyBinarySensorEntityDescription
-    )
+    """Main Husty binary sensor."""
 
     def __init__(
         self,
         coordinator,
-        description: (
-            HustyBinarySensorEntityDescription
-        ),
+        description,
     ) -> None:
-        """Initialize the binary sensor."""
 
         super().__init__(
             coordinator,
@@ -127,17 +172,48 @@ class HustyBinarySensor(
 
         self.entity_description = description
 
+
     @property
-    def is_on(self) -> bool | None:
-        """Return the binary sensor state."""
+    def is_on(self):
 
         value = get_nested_value(
             self.coordinator.data,
             self.entity_description.path,
         )
 
-        if value is None:
-            return None
+        return self.entity_description.value_fn(
+            value
+        )
+
+
+
+class HustyLeakBinarySensor(
+    HustyLeakEntity,
+    BinarySensorEntity,
+):
+    """Leak Protect binary sensor."""
+
+    def __init__(
+        self,
+        coordinator,
+        description,
+    ) -> None:
+
+        super().__init__(
+            coordinator,
+            description.key,
+        )
+
+        self.entity_description = description
+
+
+    @property
+    def is_on(self):
+
+        value = get_nested_value(
+            self.leak_data,
+            self.entity_description.path,
+        )
 
         return self.entity_description.value_fn(
             value
