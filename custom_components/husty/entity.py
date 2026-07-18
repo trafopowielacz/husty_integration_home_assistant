@@ -1,4 +1,4 @@
-"""Base entity classes for Husty."""
+"""Base entities for Husty."""
 
 from __future__ import annotations
 
@@ -15,26 +15,28 @@ def get_nested_value(
     data: dict[str, Any],
     path: tuple[str, ...],
 ) -> Any:
-    """Return a nested value from a dictionary."""
+    """Get nested value."""
 
-    value: Any = data
+    value = data
 
-    for key in path:
-        if not isinstance(value, dict):
-            return None
+    for item in path:
+        if isinstance(value, list):
+            try:
+                value = value[int(item)]
+            except (ValueError, IndexError):
+                return None
 
-        value = value.get(key)
+        elif isinstance(value, dict):
+            value = value.get(item)
 
-        if value is None:
+        else:
             return None
 
     return value
 
 
-class HustyEntity(
-    CoordinatorEntity[HustyCoordinator]
-):
-    """Base representation of a Husty entity."""
+class HustyEntity(CoordinatorEntity[HustyCoordinator]):
+    """Base Husty entity."""
 
     _attr_has_entity_name = True
 
@@ -43,45 +45,91 @@ class HustyEntity(
         coordinator: HustyCoordinator,
         key: str,
     ) -> None:
-        """Initialize a Husty entity."""
 
         super().__init__(coordinator)
 
-        self._key = key
-
-        device_id = str(
-            coordinator.data.get("deviceId", "unknown")
-        )
-
         self._attr_unique_id = (
-            f"{device_id}_{key}"
+            f"{coordinator.data.get('deviceId')}_{key}"
         )
 
     @property
     def device_info(self) -> DeviceInfo:
-        """Return the Home Assistant device information."""
+        """Main Husty device."""
 
         data = self.coordinator.data
         core = data.get("core", {})
         metadata = data.get("metadata", {})
 
-        device_id = str(
-            data.get("deviceId", "unknown")
+        return DeviceInfo(
+            identifiers={
+                (
+                    DOMAIN,
+                    data.get("deviceId"),
+                )
+            },
+            name=f"Husty {metadata.get('modelName')}",
+            manufacturer="Husty",
+            model=metadata.get("modelName"),
+            sw_version=core.get("version"),
         )
 
-        model = (
-            metadata.get("modelName")
-            or "Uzdatniacz wody"
+
+class HustyLeakEntity(CoordinatorEntity[HustyCoordinator]):
+    """Leak Protect device entity."""
+
+    _attr_has_entity_name = True
+
+    def __init__(
+        self,
+        coordinator: HustyCoordinator,
+        key: str,
+    ) -> None:
+
+        super().__init__(coordinator)
+
+        self._attr_unique_id = (
+            f"leak_{key}"
         )
+
+    @property
+    def leak_data(self) -> dict:
+        """Return Leak Protect data."""
+
+        sensors = self.coordinator.data.get(
+            "floorSensors",
+            [],
+        )
+
+        if sensors:
+            return sensors[0]
+
+        return {}
+
+    @property
+    def device_info(self) -> DeviceInfo:
+        """Leak Protect device info."""
+
+        data = self.leak_data
 
         return DeviceInfo(
             identifiers={
-                (DOMAIN, device_id)
+                (
+                    DOMAIN,
+                    data.get("deviceId"),
+                )
             },
-            name=f"Husty {model}",
+            name="Husty SaoCal Leak Protect",
             manufacturer="Husty",
-            model=model,
-            sw_version=core.get("version"),
-            serial_number=device_id,
-            configuration_url="https://app.husty.pl",
+            model=data.get(
+                "metadata",
+                {}
+            ).get(
+                "modelName"
+            ),
+            sw_version=data.get(
+                "core",
+                {}
+            ).get(
+                "version"
+            ),
         )
