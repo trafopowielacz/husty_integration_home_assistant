@@ -19,10 +19,5 @@ Nie publikuj:
 - prywatnych adresów,
 - pełnych danych diagnostycznych bez ich sprawdzenia.
 
-## Proponowanie zmian
-
-1. Utwórz fork repozytorium.
-2. Utwórz osobną gałąź:
-
 ```bash
 git checkout -b feature/nazwa-zmiany
