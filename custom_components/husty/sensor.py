@@ -15,7 +15,7 @@ from homeassistant.components.sensor import (
 from homeassistant.const import (
     PERCENTAGE,
     UnitOfMass,
-    UnitOfTime,
+    UnitOfTemperature,
     UnitOfVolume,
     UnitOfVolumeFlowRate,
 )
@@ -26,7 +26,11 @@ from homeassistant.helpers.entity_platform import (
 from homeassistant.util import dt as dt_util
 
 from . import HustyConfigEntry
-from .entity import HustyEntity, get_nested_value
+from .entity import (
+    HustyEntity,
+    HustyLeakEntity,
+    get_nested_value,
+)
 
 
 @dataclass(
@@ -36,16 +40,17 @@ from .entity import HustyEntity, get_nested_value
 class HustySensorEntityDescription(
     SensorEntityDescription
 ):
-    """Describe a Husty sensor."""
+    """Description of Husty sensor."""
 
     path: tuple[str, ...]
     value_fn: Callable[[Any], Any] | None = None
+    leak_sensor: bool = False
 
 
 def parse_timestamp(
     value: Any,
 ) -> datetime | None:
-    """Parse an ISO timestamp."""
+    """Convert timestamp."""
 
     if not isinstance(value, str):
         return None
@@ -53,55 +58,69 @@ def parse_timestamp(
     return dt_util.parse_datetime(value)
 
 
-SENSOR_DESCRIPTIONS: tuple[
-    HustySensorEntityDescription,
-    ...,
-] = (
+SENSORS = (
+
+    # -------------------------
+    # SAOCAL 250 LE
+    # -------------------------
+
     HustySensorEntityDescription(
-        key="salt_level",
+        key="salt",
         name="Sól",
         icon="mdi:shaker",
-        path=("core", "saltLevel1"),
-        native_unit_of_measurement=UnitOfMass.KILOGRAMS,
+        path=(
+            "core",
+            "saltLevel1",
+        ),
+        native_unit_of_measurement=(
+            UnitOfMass.KILOGRAMS
+        ),
         state_class=SensorStateClass.MEASUREMENT,
     ),
-    HustySensorEntityDescription(
-        key="salt_capacity",
-        name="Pojemność zbiornika soli",
-        icon="mdi:shaker-outline",
-        path=("core", "saltCapacity"),
-        native_unit_of_measurement=UnitOfMass.KILOGRAMS,
-        entity_registry_enabled_default=False,
-    ),
+
     HustySensorEntityDescription(
         key="water_remaining",
         name="Pozostała woda",
         icon="mdi:water",
-        path=("core", "waterSupply"),
-        native_unit_of_measurement=UnitOfVolume.LITERS,
+        path=(
+            "core",
+            "waterSupply",
+        ),
+        native_unit_of_measurement=(
+            UnitOfVolume.LITERS
+        ),
         state_class=SensorStateClass.MEASUREMENT,
     ),
+
     HustySensorEntityDescription(
         key="water_remaining_percent",
         name="Pozostała woda procent",
         icon="mdi:water-percent",
-        path=("core", "waterSupplyPercent"),
+        path=(
+            "core",
+            "waterSupplyPercent",
+        ),
         native_unit_of_measurement=PERCENTAGE,
         state_class=SensorStateClass.MEASUREMENT,
     ),
+
     HustySensorEntityDescription(
         key="water_flow",
         name="Przepływ wody",
         icon="mdi:water-pump",
-        path=("core", "waterFlow"),
-        device_class=SensorDeviceClass.VOLUME_FLOW_RATE,
+        path=(
+            "core",
+            "waterFlow",
+        ),
         native_unit_of_measurement=(
             UnitOfVolumeFlowRate.LITERS_PER_MINUTE
         ),
+        device_class=SensorDeviceClass.VOLUME_FLOW_RATE,
         state_class=SensorStateClass.MEASUREMENT,
     ),
+
     HustySensorEntityDescription(
-        key="water_consumption_today",
+        key="water_today",
         name="Zużycie wody dzisiaj",
         icon="mdi:water-check",
         path=(
@@ -110,12 +129,15 @@ SENSOR_DESCRIPTIONS: tuple[
             "today",
             "total",
         ),
+        native_unit_of_measurement=(
+            UnitOfVolume.LITERS
+        ),
         device_class=SensorDeviceClass.WATER,
-        native_unit_of_measurement=UnitOfVolume.LITERS,
         state_class=SensorStateClass.TOTAL_INCREASING,
     ),
+
     HustySensorEntityDescription(
-        key="water_consumption_yesterday",
+        key="water_yesterday",
         name="Zużycie wody wczoraj",
         icon="mdi:water-minus",
         path=(
@@ -124,14 +146,16 @@ SENSOR_DESCRIPTIONS: tuple[
             "yesterday",
             "total",
         ),
+        native_unit_of_measurement=(
+            UnitOfVolume.LITERS
+        ),
         device_class=SensorDeviceClass.WATER,
-        native_unit_of_measurement=UnitOfVolume.LITERS,
         state_class=SensorStateClass.TOTAL,
-        entity_registry_enabled_default=False,
     ),
+
     HustySensorEntityDescription(
-        key="water_consumption_week",
-        name="Zużycie wody w tym tygodniu",
+        key="water_week",
+        name="Zużycie wody tydzień",
         icon="mdi:calendar-week",
         path=(
             "core",
@@ -139,13 +163,16 @@ SENSOR_DESCRIPTIONS: tuple[
             "week",
             "total",
         ),
+        native_unit_of_measurement=(
+            UnitOfVolume.LITERS
+        ),
         device_class=SensorDeviceClass.WATER,
-        native_unit_of_measurement=UnitOfVolume.LITERS,
         state_class=SensorStateClass.TOTAL_INCREASING,
     ),
+
     HustySensorEntityDescription(
-        key="water_consumption_month",
-        name="Zużycie wody w tym miesiącu",
+        key="water_month",
+        name="Zużycie wody miesiąc",
         icon="mdi:calendar-month",
         path=(
             "core",
@@ -153,13 +180,16 @@ SENSOR_DESCRIPTIONS: tuple[
             "month",
             "total",
         ),
+        native_unit_of_measurement=(
+            UnitOfVolume.LITERS
+        ),
         device_class=SensorDeviceClass.WATER,
-        native_unit_of_measurement=UnitOfVolume.LITERS,
         state_class=SensorStateClass.TOTAL_INCREASING,
     ),
+
     HustySensorEntityDescription(
-        key="water_consumption_year",
-        name="Zużycie wody w tym roku",
+        key="water_year",
+        name="Zużycie wody rok",
         icon="mdi:calendar",
         path=(
             "core",
@@ -167,10 +197,13 @@ SENSOR_DESCRIPTIONS: tuple[
             "year",
             "total",
         ),
+        native_unit_of_measurement=(
+            UnitOfVolume.LITERS
+        ),
         device_class=SensorDeviceClass.WATER,
-        native_unit_of_measurement=UnitOfVolume.LITERS,
         state_class=SensorStateClass.TOTAL_INCREASING,
     ),
+
     HustySensorEntityDescription(
         key="days_to_regeneration",
         name="Dni do regeneracji",
@@ -179,30 +212,21 @@ SENSOR_DESCRIPTIONS: tuple[
             "core",
             "remainingDaysToNextRegeneration",
         ),
-        native_unit_of_measurement=UnitOfTime.DAYS,
-        state_class=SensorStateClass.MEASUREMENT,
+        native_unit_of_measurement="dni",
     ),
+
     HustySensorEntityDescription(
-        key="salt_regenerations_left",
+        key="salt_regenerations",
         name="Pozostałe regeneracje z soli",
         icon="mdi:counter",
         path=(
             "core",
             "saltRegenerationsLeft",
         ),
-        state_class=SensorStateClass.MEASUREMENT,
     ),
+
     HustySensorEntityDescription(
-        key="regeneration_time",
-        name="Planowana godzina regeneracji",
-        icon="mdi:clock-outline",
-        path=(
-            "core",
-            "delayedRegenerationTime",
-        ),
-    ),
-    HustySensorEntityDescription(
-        key="last_reported",
+        key="last_update",
         name="Ostatnie połączenie",
         icon="mdi:cloud-clock",
         path=(
@@ -212,6 +236,63 @@ SENSOR_DESCRIPTIONS: tuple[
         device_class=SensorDeviceClass.TIMESTAMP,
         value_fn=parse_timestamp,
     ),
+
+
+    # -------------------------
+    # LEAK PROTECT
+    # -------------------------
+
+    HustySensorEntityDescription(
+        key="leak_temperature",
+        name="Temperatura",
+        icon="mdi:thermometer",
+        path=(
+            "core",
+            "temperature",
+        ),
+        native_unit_of_measurement=(
+            UnitOfTemperature.CELSIUS
+        ),
+        leak_sensor=True,
+    ),
+
+    HustySensorEntityDescription(
+        key="leak_humidity",
+        name="Wilgotność",
+        icon="mdi:water-percent",
+        path=(
+            "core",
+            "humidity",
+        ),
+        native_unit_of_measurement=PERCENTAGE,
+        leak_sensor=True,
+    ),
+
+    HustySensorEntityDescription(
+        key="leak_battery",
+        name="Bateria",
+        icon="mdi:battery",
+        path=(
+            "core",
+            "battery",
+        ),
+        native_unit_of_measurement=PERCENTAGE,
+        device_class=SensorDeviceClass.BATTERY,
+        leak_sensor=True,
+    ),
+
+    HustySensorEntityDescription(
+        key="leak_last_update",
+        name="Ostatnia aktualizacja",
+        icon="mdi:clock",
+        path=(
+            "metadata",
+            "lastUpdatedAt",
+        ),
+        device_class=SensorDeviceClass.TIMESTAMP,
+        value_fn=parse_timestamp,
+        leak_sensor=True,
+    ),
 )
 
 
@@ -220,33 +301,44 @@ async def async_setup_entry(
     entry: HustyConfigEntry,
     async_add_entities: AddConfigEntryEntitiesCallback,
 ) -> None:
-    """Set up Husty sensors."""
+    """Create Husty sensors."""
 
     coordinator = entry.runtime_data
 
-    async_add_entities(
-        HustySensor(
-            coordinator,
-            description,
-        )
-        for description in SENSOR_DESCRIPTIONS
-    )
+    entities = []
+
+    for description in SENSORS:
+
+        if description.leak_sensor:
+            entities.append(
+                HustyLeakSensor(
+                    coordinator,
+                    description,
+                )
+            )
+
+        else:
+            entities.append(
+                HustySensor(
+                    coordinator,
+                    description,
+                )
+            )
+
+    async_add_entities(entities)
 
 
 class HustySensor(
     HustyEntity,
     SensorEntity,
 ):
-    """Representation of a Husty sensor."""
-
-    entity_description: HustySensorEntityDescription
+    """Main Husty sensor."""
 
     def __init__(
         self,
         coordinator,
-        description: HustySensorEntityDescription,
+        description,
     ) -> None:
-        """Initialize the sensor."""
 
         super().__init__(
             coordinator,
@@ -255,16 +347,55 @@ class HustySensor(
 
         self.entity_description = description
 
+
     @property
-    def native_value(self) -> Any:
-        """Return the sensor value."""
+    def native_value(self):
 
         value = get_nested_value(
             self.coordinator.data,
             self.entity_description.path,
         )
 
-        if self.entity_description.value_fn is not None:
-            return self.entity_description.value_fn(value)
+        if self.entity_description.value_fn:
+            return self.entity_description.value_fn(
+                value
+            )
+
+        return value
+
+
+
+class HustyLeakSensor(
+    HustyLeakEntity,
+    SensorEntity,
+):
+    """Leak Protect sensor."""
+
+    def __init__(
+        self,
+        coordinator,
+        description,
+    ) -> None:
+
+        super().__init__(
+            coordinator,
+            description.key,
+        )
+
+        self.entity_description = description
+
+
+    @property
+    def native_value(self):
+
+        value = get_nested_value(
+            self.leak_data,
+            self.entity_description.path,
+        )
+
+        if self.entity_description.value_fn:
+            return self.entity_description.value_fn(
+                value
+            )
 
         return value
