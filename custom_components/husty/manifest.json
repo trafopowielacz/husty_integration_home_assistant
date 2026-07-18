@@ -1,15 +1,14 @@
 {
   "domain": "husty",
   "name": "Husty",
-  "version": "0.2.0",
-  "config_flow": true,
-  "documentation": "https://github.com/trafopowielacz/husty_integration_home_assistant",
-  "issue_tracker": "https://github.com/trafopowielacz/husty_integration_home_assistant/issues",
   "codeowners": [
     "@trafopowielacz"
   ],
+  "config_flow": true,
+  "documentation": "https://github.com/trafopowielacz/husty_integration_home_assistant",
+  "integration_type": "device",
   "iot_class": "cloud_polling",
-  "loggers": [
-    "custom_components.husty"
-  ]
+  "issue_tracker": "https://github.com/trafopowielacz/husty_integration_home_assistant/issues",
+  "requirements": [],
+  "version": "0.1.1"
 }
