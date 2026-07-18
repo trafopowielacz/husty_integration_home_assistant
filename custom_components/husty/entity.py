@@ -12,10 +12,10 @@ from .coordinator import HustyCoordinator
 
 
 def get_nested_value(
-    data: dict[str, Any],
+    data: dict[str, Any] | list | None,
     path: tuple[str, ...],
 ) -> Any:
-    """Get nested value."""
+    """Get nested value from dict/list."""
 
     value = data
 
@@ -36,7 +36,7 @@ def get_nested_value(
 
 
 class HustyEntity(CoordinatorEntity[HustyCoordinator]):
-    """Base Husty entity."""
+    """Base entity for main Husty device."""
 
     _attr_has_entity_name = True
 
@@ -45,20 +45,34 @@ class HustyEntity(CoordinatorEntity[HustyCoordinator]):
         coordinator: HustyCoordinator,
         key: str,
     ) -> None:
+        """Initialize main device entity."""
 
         super().__init__(coordinator)
 
+        device_id = coordinator.data.get(
+            "deviceId",
+            "unknown",
+        )
+
         self._attr_unique_id = (
-            f"{coordinator.data.get('deviceId')}_{key}"
+            f"{device_id}_{key}"
         )
 
     @property
     def device_info(self) -> DeviceInfo:
-        """Main Husty device."""
+        """Return main device info."""
 
         data = self.coordinator.data
-        core = data.get("core", {})
-        metadata = data.get("metadata", {})
+
+        core = data.get(
+            "core",
+            {},
+        )
+
+        metadata = data.get(
+            "metadata",
+            {},
+        )
 
         return DeviceInfo(
             identifiers={
@@ -67,15 +81,20 @@ class HustyEntity(CoordinatorEntity[HustyCoordinator]):
                     data.get("deviceId"),
                 )
             },
-            name=f"Husty {metadata.get('modelName')}",
+            name=f"Husty {metadata.get('modelName', 'SaoCal')}",
             manufacturer="Husty",
-            model=metadata.get("modelName"),
-            sw_version=core.get("version"),
+            model=metadata.get(
+                "modelName",
+                "SaoCal 250 LE",
+            ),
+            sw_version=core.get(
+                "version",
+            ),
         )
 
 
 class HustyLeakEntity(CoordinatorEntity[HustyCoordinator]):
-    """Leak Protect device entity."""
+    """Base entity for Leak Protect module."""
 
     _attr_has_entity_name = True
 
@@ -84,15 +103,29 @@ class HustyLeakEntity(CoordinatorEntity[HustyCoordinator]):
         coordinator: HustyCoordinator,
         key: str,
     ) -> None:
+        """Initialize Leak Protect entity."""
 
         super().__init__(coordinator)
 
+        sensors = coordinator.data.get(
+            "floorSensors",
+            [],
+        )
+
+        device_id = "unknown"
+
+        if sensors:
+            device_id = sensors[0].get(
+                "deviceId",
+                "unknown",
+            )
+
         self._attr_unique_id = (
-            f"leak_{key}"
+            f"{device_id}_{key}"
         )
 
     @property
-    def leak_data(self) -> dict:
+    def leak_data(self) -> dict[str, Any]:
         """Return Leak Protect data."""
 
         sensors = self.coordinator.data.get(
@@ -107,9 +140,19 @@ class HustyLeakEntity(CoordinatorEntity[HustyCoordinator]):
 
     @property
     def device_info(self) -> DeviceInfo:
-        """Leak Protect device info."""
+        """Return Leak Protect device info."""
 
         data = self.leak_data
+
+        core = data.get(
+            "core",
+            {},
+        )
+
+        metadata = data.get(
+            "metadata",
+            {},
+        )
 
         return DeviceInfo(
             identifiers={
@@ -120,16 +163,11 @@ class HustyLeakEntity(CoordinatorEntity[HustyCoordinator]):
             },
             name="Husty SaoCal Leak Protect",
             manufacturer="Husty",
-            model=data.get(
-                "metadata",
-                {}
-            ).get(
-                "modelName"
+            model=metadata.get(
+                "modelName",
+                "Leak Protect",
             ),
-            sw_version=data.get(
-                "core",
-                {}
-            ).get(
-                "version"
+            sw_version=core.get(
+                "version",
             ),
         )
