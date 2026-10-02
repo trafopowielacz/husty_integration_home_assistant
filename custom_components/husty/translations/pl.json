@@ -30,5 +30,19 @@
       "already_configured": "To urządzenie Husty jest już skonfigurowane.",
       "reauth_successful": "Klucz API został zaktualizowany."
     }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Interwał odświeżania",
+        "description": "Wybierz, jak często integracja ma pobierać dane z API Husty.",
+        "data": {
+          "update_interval": "Interwał odświeżania"
+        },
+        "data_description": {
+          "update_interval": "Częstsze odświeżanie może zwiększyć liczbę zapytań do API."
+        }
+      }
+    }
   }
 }

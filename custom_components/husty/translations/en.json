@@ -1,0 +1,48 @@
+{
+  "title": "Husty",
+  "config": {
+    "step": {
+      "user": {
+        "title": "Connect to Husty",
+        "description": "Enter the API key generated in your Husty device settings.",
+        "data": {
+          "api_key": "API key"
+        },
+        "data_description": {
+          "api_key": "The key is assigned to a specific water softener."
+        }
+      },
+      "reauth_confirm": {
+        "title": "Update Husty API key",
+        "description": "The current API key is invalid or has been revoked. Enter a new key.",
+        "data": {
+          "api_key": "New API key"
+        }
+      }
+    },
+    "error": {
+      "cannot_connect": "Could not connect to the Husty API.",
+      "invalid_auth": "The API key is invalid or has been revoked.",
+      "invalid_response": "The Husty API returned invalid data.",
+      "unknown": "An unexpected error occurred."
+    },
+    "abort": {
+      "already_configured": "This Husty device is already configured.",
+      "reauth_successful": "The API key has been updated."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Refresh interval",
+        "description": "Choose how often the integration retrieves data from the Husty API.",
+        "data": {
+          "update_interval": "Refresh interval"
+        },
+        "data_description": {
+          "update_interval": "More frequent updates may increase the number of API requests."
+        }
+      }
+    }
+  }
+}
