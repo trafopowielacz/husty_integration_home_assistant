@@ -10,6 +10,13 @@ Wszystkie istotne zmiany w integracji Husty będą dokumentowane w tym pliku.
 - Ręczne uruchamianie regeneracji, jeśli zostanie udostępnione przez API.
 - Obsługa kolejnych modeli urządzeń Husty.
 
+## [0.1.3] - 2026-10-02
+
+### Dodano
+
+- Opcje integracji pozwalające ustawić interwał odświeżania API: 5, 10, 30, 60, 120 lub 300 sekund.
+- Tłumaczenia opcji w języku polskim i angielskim.
+
 ## [0.1.1] - 2026-07-18
 
 ### Dodano
