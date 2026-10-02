@@ -9,10 +9,10 @@ import voluptuous as vol
 
 from homeassistant import config_entries
 from homeassistant.data_entry_flow import FlowResult
+from homeassistant.helpers import selector
 from homeassistant.helpers.aiohttp_client import (
     async_get_clientsession,
 )
-from homeassistant.helpers import selector
 
 from .api import (
     HustyApiClient,
@@ -22,9 +22,12 @@ from .api import (
 )
 from .const import (
     CONF_API_KEY,
+    CONF_UPDATE_INTERVAL,
+    DEFAULT_UPDATE_INTERVAL,
     DEVICE_URL,
     DOMAIN,
     REQUEST_TIMEOUT,
+    UPDATE_INTERVAL_OPTIONS,
 )
 
 _LOGGER = logging.getLogger(__name__)
@@ -50,6 +53,15 @@ class HustyConfigFlow(
 
     VERSION = 2
     MINOR_VERSION = 0
+    options_flow_reloads = True
+
+    @staticmethod
+    def async_get_options_flow(
+        config_entry: config_entries.ConfigEntry,
+    ) -> HustyOptionsFlow:
+        """Create the options flow."""
+
+        return HustyOptionsFlow()
 
     async def _async_validate_api_key(
         self,
@@ -181,4 +193,52 @@ class HustyConfigFlow(
             step_id="reauth_confirm",
             data_schema=API_KEY_SCHEMA,
             errors=errors,
+        )
+
+
+class HustyOptionsFlow(config_entries.OptionsFlowWithReload):
+    """Manage Husty integration options."""
+
+    async def async_step_init(
+        self,
+        user_input: dict[str, Any] | None = None,
+    ) -> FlowResult:
+        """Configure the API polling interval."""
+
+        if user_input is not None:
+            user_input[CONF_UPDATE_INTERVAL] = int(
+                user_input[CONF_UPDATE_INTERVAL]
+            )
+            return self.async_create_entry(
+                title="",
+                data=user_input,
+            )
+
+        current_interval = self.config_entry.options.get(
+            CONF_UPDATE_INTERVAL,
+            DEFAULT_UPDATE_INTERVAL,
+        )
+        schema = vol.Schema(
+            {
+                vol.Required(
+                    CONF_UPDATE_INTERVAL,
+                    default=str(current_interval),
+                ): selector.SelectSelector(
+                    selector.SelectSelectorConfig(
+                        options=[
+                            {
+                                "label": f"{value} s",
+                                "value": str(value),
+                            }
+                            for value in UPDATE_INTERVAL_OPTIONS
+                        ],
+                        mode=selector.SelectSelectorMode.DROPDOWN,
+                    )
+                )
+            }
+        )
+
+        return self.async_show_form(
+            step_id="init",
+            data_schema=schema,
         )

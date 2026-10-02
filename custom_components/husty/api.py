@@ -53,7 +53,7 @@ class HustyApiClient:
         headers = {
             "Authorization": f"Bearer {self._api_key}",
             "Accept": "application/json",
-            "User-Agent": "HomeAssistant-Husty/0.1.0",
+            "User-Agent": "HomeAssistant-Husty/0.1.3",
         }
 
         timeout = aiohttp.ClientTimeout(

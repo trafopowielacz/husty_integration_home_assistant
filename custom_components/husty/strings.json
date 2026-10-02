@@ -3,32 +3,46 @@
   "config": {
     "step": {
       "user": {
-        "title": "Połącz z Husty",
-        "description": "Wprowadź klucz API wygenerowany w ustawieniach urządzenia Husty.",
+        "title": "Connect to Husty",
+        "description": "Enter the API key generated in your Husty device settings.",
         "data": {
-          "api_key": "Klucz API"
+          "api_key": "API key"
         },
         "data_description": {
-          "api_key": "Klucz jest przypisany do konkretnego uzdatniacza."
+          "api_key": "The key is assigned to a specific water softener."
         }
       },
       "reauth_confirm": {
-        "title": "Zaktualizuj klucz API Husty",
-        "description": "Dotychczasowy klucz API jest nieprawidłowy lub został unieważniony. Wprowadź nowy klucz.",
+        "title": "Update Husty API key",
+        "description": "The current API key is invalid or has been revoked. Enter a new key.",
         "data": {
-          "api_key": "Nowy klucz API"
+          "api_key": "New API key"
         }
       }
     },
     "error": {
-      "cannot_connect": "Nie udało się połączyć z API Husty.",
-      "invalid_auth": "Klucz API jest nieprawidłowy lub został unieważniony.",
-      "invalid_response": "API Husty zwróciło nieprawidłowe dane.",
-      "unknown": "Wystąpił nieoczekiwany błąd."
+      "cannot_connect": "Could not connect to the Husty API.",
+      "invalid_auth": "The API key is invalid or has been revoked.",
+      "invalid_response": "The Husty API returned invalid data.",
+      "unknown": "An unexpected error occurred."
     },
     "abort": {
-      "already_configured": "To urządzenie Husty jest już skonfigurowane.",
-      "reauth_successful": "Klucz API został zaktualizowany."
+      "already_configured": "This Husty device is already configured.",
+      "reauth_successful": "The API key has been updated."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Refresh interval",
+        "description": "Choose how often the integration retrieves data from the Husty API.",
+        "data": {
+          "update_interval": "Refresh interval"
+        },
+        "data_description": {
+          "update_interval": "More frequent updates may increase the number of API requests."
+        }
+      }
     }
   }
 }
